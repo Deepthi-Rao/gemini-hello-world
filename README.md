@@ -1,12 +1,25 @@
-# gemini-web-tool-calling
+# Set Scout
 
-`qwen-tool-calling` behind a web server, pointed at Gemini.
+An agent for NYC film and TV shoots: find where productions have been filming,
+grab coffee nearby, and get there. Built on the `gemini-web-tool-calling` starter
+(FastAPI + LiteLLM + Gemini, `vertex_ai/gemini-3.5-flash-lite`).
 
-- The harness loop is the same one from `qwen-tool-calling`, wrapped in `run_agent()`.
-- The session store and `/chat` endpoint are the ones from `qwen-web-chat`.
-- Only the model changed: `vertex_ai/gemini-3.5-flash-lite` in the `global` location.
-- `/chat` also returns the tool calls the harness made, and the page shows them
-  above the assistant's answer.
+## Tools
+
+| Tool | What it does | Data source (free, no API key) |
+|---|---|---|
+| `find_film_shoots` | Recent permitted shoots by borough, street, or ZIP code | NYC Open Data film permits |
+| `find_coffee_near` | Cafes near an address, landmark, or NYC intersection, closest first | OpenStreetMap: Nominatim, Overpass |
+| `get_route` | Walk, bike, and drive routes with directions, and which is fastest | OSRM at routing.openstreetmap.de |
+
+NYC intersections are written `Street & Cross Street, Borough`, so the agent can
+chain tools: a shoot's blocks become the location for coffee or a route.
+
+Every tool returns JSON. Failures return `{"error", "how_to_fix"}` so the model
+can retry with better arguments or explain the problem to the user.
+
+`/chat` returns `response`, `session_id`, and `tool_calls` (name, args, and
+result of every call), and the page shows each call as an expandable card.
 
 ## Setup
 
@@ -16,6 +29,11 @@
    project, so run `gemini-hello-world` first to check it.
 3. `uv run app.py`, then open http://localhost:8000
 
-Try: "Is it nice enough to go for a walk in New York?"
+Try: "Find a recent shoot in Greenpoint (11222) and a coffee shop next to it."
 
-The weather comes from Open-Meteo, which needs no API key.
+## Limits
+
+- The city's permit feed can lag by months; the agent says what date it runs through.
+- No subway or bus routing, and drive times ignore traffic.
+- The OpenStreetMap services are shared and rate limited (Nominatim: one request
+  per second), so this is for demos, not heavy use.

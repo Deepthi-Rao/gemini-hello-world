@@ -3,192 +3,543 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Gemini Web Tool Calling</title>
+        <title>Set Scout</title>
         <style>
+            :root {
+                --bg: #111113;
+                --panel: #1a1a1d;
+                --panel-2: #222226;
+                --line: #2e2e33;
+                --text: #ececef;
+                --muted: #9a9aa3;
+                --accent: #f5c518;
+                --accent-ink: #111113;
+                --ok: #4ade80;
+                --err: #f87171;
+                --mono: ui-monospace, "SF Mono", Menlo, monospace;
+            }
             * {
                 box-sizing: border-box;
                 margin: 0;
                 padding: 0;
             }
             body {
-                font-family: system-ui, sans-serif;
-                height: 100vh;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                padding: 3rem 1rem;
-            }
-            #container {
-                width: 100%;
-                max-width: 900px;
-                display: flex;
-                flex-direction: column;
-                border: 1px solid #e0e0e0;
-            }
-            #messages {
-                overflow-y: auto;
-                padding: 2rem;
-                display: flex;
-                flex-direction: column;
-                gap: 1.5rem;
-                min-height: 450px;
-                max-height: 70vh;
-            }
-            .msg {
+                font-family: system-ui, -apple-system, sans-serif;
+                background: var(--bg);
+                color: var(--text);
+                min-height: 100vh;
                 line-height: 1.5;
-                max-width: 80%;
             }
-            .msg.user {
-                align-self: flex-end;
-                text-align: right;
+            .app {
+                display: grid;
+                grid-template-columns: 320px 1fr;
+                max-width: 1200px;
+                margin: 0 auto;
+                min-height: 100vh;
             }
-            .msg .role {
-                font-size: 0.75rem;
-                text-transform: uppercase;
-                letter-spacing: 0.05em;
-                color: #999;
-                margin-bottom: 0.25rem;
-            }
-            .msg.loading .content {
-                color: #999;
-            }
-            #input-area {
+
+            /* --- Sidebar: what the agent is and how to use it --- */
+            aside {
+                border-right: 1px solid var(--line);
+                padding: 2rem 1.5rem;
                 display: flex;
-                gap: 1rem;
-                padding: 1.5rem;
-                border-top: 1px solid #e0e0e0;
+                flex-direction: column;
+                gap: 1.75rem;
             }
-            #user-input {
-                flex: 1;
-                padding: 0.75rem 0;
-                border: none;
-                border-bottom: 1px solid #e0e0e0;
-                font-size: 1rem;
-                outline: none;
+            .slate {
+                height: 14px;
+                border-radius: 3px;
+                background: repeating-linear-gradient(-45deg, var(--text) 0 12px, var(--bg) 12px 24px);
+                margin-bottom: 0.9rem;
             }
-            #user-input:focus {
-                border-bottom-color: #000;
+            h1 {
+                font-size: 1.75rem;
+                letter-spacing: -0.02em;
             }
-            button {
-                padding: 0.75rem 1.5rem;
-                background: #000;
-                color: #fff;
-                border: none;
-                font-size: 0.75rem;
+            h1 span {
+                color: var(--accent);
+            }
+            .tagline {
+                color: var(--muted);
+                font-size: 0.95rem;
+                margin-top: 0.25rem;
+            }
+            h2 {
+                font-size: 0.7rem;
                 text-transform: uppercase;
-                letter-spacing: 0.05em;
+                letter-spacing: 0.1em;
+                color: var(--muted);
+                margin-bottom: 0.6rem;
+            }
+            .tool-list {
+                list-style: none;
+                display: flex;
+                flex-direction: column;
+                gap: 0.6rem;
+            }
+            .tool-list li {
+                background: var(--panel);
+                border: 1px solid var(--line);
+                border-radius: 8px;
+                padding: 0.65rem 0.8rem;
+                font-size: 0.875rem;
+            }
+            .tool-list code {
+                font-family: var(--mono);
+                font-size: 0.78rem;
+                color: var(--accent);
+            }
+            .tool-list p {
+                color: var(--muted);
+                margin-top: 0.15rem;
+            }
+            .examples {
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            .example {
+                text-align: left;
+                background: transparent;
+                color: var(--text);
+                border: 1px dashed var(--line);
+                border-radius: 8px;
+                padding: 0.55rem 0.75rem;
+                font: inherit;
+                font-size: 0.85rem;
                 cursor: pointer;
             }
-            .tool {
-                font-family: ui-monospace, monospace;
+            .example:hover {
+                border-color: var(--accent);
+                color: var(--accent);
+            }
+            .fine-print {
+                font-size: 0.78rem;
+                color: var(--muted);
+                margin-top: auto;
+            }
+
+            /* --- Chat --- */
+            main {
+                display: flex;
+                flex-direction: column;
+                height: 100vh;
+                position: sticky;
+                top: 0;
+            }
+            .chat-head {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 1rem 1.5rem;
+                border-bottom: 1px solid var(--line);
+                font-size: 0.85rem;
+                color: var(--muted);
+            }
+            #messages {
+                flex: 1;
+                overflow-y: auto;
+                padding: 1.5rem;
+                display: flex;
+                flex-direction: column;
+                gap: 1.25rem;
+            }
+            .empty {
+                margin: auto;
+                text-align: center;
+                color: var(--muted);
+                max-width: 360px;
+            }
+            .empty strong {
+                display: block;
+                color: var(--text);
+                font-size: 1.1rem;
+                margin-bottom: 0.35rem;
+            }
+            .turn {
+                max-width: 85%;
+            }
+            .turn.user {
+                align-self: flex-end;
+                background: var(--accent);
+                color: var(--accent-ink);
+                padding: 0.6rem 0.9rem;
+                border-radius: 14px 14px 4px 14px;
+            }
+            .turn.agent {
+                align-self: flex-start;
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            .answer {
+                background: var(--panel);
+                border: 1px solid var(--line);
+                padding: 0.75rem 0.95rem;
+                border-radius: 14px 14px 14px 4px;
+                white-space: pre-wrap;
+            }
+            .answer ul {
+                padding-left: 1.2rem;
+                white-space: normal;
+            }
+            .answer strong {
+                color: var(--accent);
+            }
+            .answer.thinking {
+                color: var(--muted);
+            }
+            .answer.failed {
+                border-color: var(--err);
+            }
+
+            /* Tool call cards: name, args, and result of every call */
+            details.call {
+                background: var(--panel-2);
+                border: 1px solid var(--line);
+                border-left: 3px solid var(--ok);
+                border-radius: 6px;
+                font-size: 0.8rem;
+            }
+            details.call.error {
+                border-left-color: var(--err);
+            }
+            details.call summary {
+                cursor: pointer;
+                padding: 0.45rem 0.7rem;
+                font-family: var(--mono);
+                list-style: none;
+                display: flex;
+                gap: 0.5rem;
+                align-items: baseline;
+            }
+            details.call summary::before {
+                content: "▸";
+                color: var(--muted);
+            }
+            details.call[open] summary::before {
+                content: "▾";
+            }
+            .call-name {
+                color: var(--accent);
+            }
+            .call-args {
+                color: var(--muted);
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            .call-status {
+                margin-left: auto;
+                font-size: 0.7rem;
+                text-transform: uppercase;
+                letter-spacing: 0.06em;
+                color: var(--ok);
+            }
+            details.call.error .call-status {
+                color: var(--err);
+            }
+            .call-body {
+                padding: 0 0.7rem 0.6rem;
+            }
+            .call-body h3 {
+                font-size: 0.65rem;
+                text-transform: uppercase;
+                letter-spacing: 0.08em;
+                color: var(--muted);
+                margin: 0.5rem 0 0.2rem;
+            }
+            .call-body pre {
+                font-family: var(--mono);
                 font-size: 0.75rem;
-                color: #555;
-                background: #f5f5f5;
-                border-left: 3px solid #f59e0b;
-                padding: 0.5rem 0.75rem;
-                margin: 0.25rem 0 0.75rem;
+                background: var(--bg);
+                border-radius: 4px;
+                padding: 0.5rem;
+                overflow-x: auto;
+                max-height: 260px;
                 white-space: pre-wrap;
                 word-break: break-word;
             }
-            .tool .label {
-                text-transform: uppercase;
-                letter-spacing: 0.05em;
-                color: #b45309;
+
+            /* --- Input --- */
+            form {
+                display: flex;
+                gap: 0.75rem;
+                padding: 1rem 1.5rem 1.5rem;
+                border-top: 1px solid var(--line);
+            }
+            #user-input {
+                flex: 1;
+                background: var(--panel);
+                border: 1px solid var(--line);
+                color: var(--text);
+                border-radius: 10px;
+                padding: 0.75rem 0.9rem;
+                font: inherit;
+                outline: none;
+            }
+            #user-input:focus {
+                border-color: var(--accent);
+            }
+            button.primary,
+            button.ghost {
+                border-radius: 10px;
+                font: inherit;
+                font-weight: 600;
+                cursor: pointer;
+            }
+            button.primary {
+                background: var(--accent);
+                color: var(--accent-ink);
+                border: none;
+                padding: 0 1.25rem;
+            }
+            button.ghost {
+                background: transparent;
+                color: var(--muted);
+                border: 1px solid var(--line);
+                padding: 0.3rem 0.75rem;
+                font-size: 0.8rem;
+                font-weight: 500;
             }
             button:disabled {
-                opacity: 0.3;
+                opacity: 0.4;
+                cursor: default;
+            }
+
+            @media (max-width: 800px) {
+                .app {
+                    grid-template-columns: minmax(0, 1fr);
+                }
+                aside {
+                    border-right: none;
+                    border-bottom: 1px solid var(--line);
+                    padding: 1.25rem 1rem;
+                }
+                main {
+                    height: 85vh;
+                    position: static;
+                }
+                #messages,
+                form,
+                .chat-head {
+                    padding-left: 1rem;
+                    padding-right: 1rem;
+                }
+                .turn {
+                    max-width: 100%;
+                }
             }
         </style>
     </head>
     <body>
-        <div id="container">
-            <div id="messages"></div>
-            <div id="input-area">
-                <input
-                    type="text"
-                    id="user-input"
-                    placeholder="Type a message..."
-                    autocomplete="off"
-                />
-                <button id="send-btn">Send</button>
-            </div>
+        <div class="app">
+            <aside>
+                <header>
+                    <div class="slate"></div>
+                    <h1>Set <span>Scout</span></h1>
+                    <p class="tagline">
+                        An AI agent for spotting film and TV shoots around New York City,
+                        then grabbing coffee nearby and getting there.
+                    </p>
+                </header>
+
+                <section>
+                    <h2>What it can do</h2>
+                    <ul class="tool-list">
+                        <li>
+                            <code>find_film_shoots</code>
+                            <p>Recent permitted shoots by borough, street, or ZIP code, from NYC Open Data.</p>
+                        </li>
+                        <li>
+                            <code>find_coffee_near</code>
+                            <p>Cafes closest to an address, landmark, or NYC intersection, with walking minutes.</p>
+                        </li>
+                        <li>
+                            <code>get_route</code>
+                            <p>Walk, bike, or drive directions, and which is fastest.</p>
+                        </li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2>Try asking</h2>
+                    <div class="examples">
+                        <button class="example">What's been filming on West 43rd Street lately?</button>
+                        <button class="example">Find a recent shoot in Greenpoint (11222) and a coffee shop next to it.</button>
+                        <button class="example">Fastest way from the Empire State Building to Kent St &amp; West St in Brooklyn?</button>
+                        <button class="example">Find the latest shoot in the Bronx, then tell me how long it takes to bike there from Yankee Stadium.</button>
+                    </div>
+                </section>
+
+                <p class="fine-print">
+                    Set Scout remembers the conversation until you start a new chat. Every tool it
+                    runs appears as a card above its answer; click one to see the exact arguments and
+                    result. The city's permit data can lag by a few months. Routes don't include subway
+                    or bus, and drive times ignore traffic.
+                </p>
+            </aside>
+
+            <main>
+                <div class="chat-head">
+                    <span>Powered by Gemini with live tool calls</span>
+                    <button class="ghost" id="new-chat" type="button">New chat</button>
+                </div>
+                <div id="messages">
+                    <div class="empty" id="empty">
+                        <strong>Where's the shoot?</strong>
+                        Ask about filming anywhere in the five boroughs, or try one of the examples.
+                    </div>
+                </div>
+                <form id="chat-form">
+                    <input
+                        type="text"
+                        id="user-input"
+                        placeholder="Ask about shoots, coffee, or directions…"
+                        autocomplete="off"
+                    />
+                    <button class="primary" id="send-btn" type="submit">Send</button>
+                </form>
+            </main>
         </div>
+
         <script>
             const messages = document.getElementById("messages");
             const userInput = document.getElementById("user-input");
             const sendBtn = document.getElementById("send-btn");
             let sessionId = null;
 
-            function addMessage(role, text, isLoading = false) {
-                const div = document.createElement("div");
-                div.className =
-                    "msg " +
-                    (role === "you" ? "user" : "assistant") +
-                    (isLoading ? " loading" : "");
-                div.innerHTML =
-                    '<div class="role">' +
-                    role +
-                    '</div><div class="content">' +
-                    text +
-                    "</div>";
-                messages.appendChild(div);
-                messages.scrollTop = messages.scrollHeight;
-                return div;
+            // Build elements with textContent, never innerHTML, so model or tool text can't inject HTML.
+            function el(tag, className, text) {
+                const node = document.createElement(tag);
+                if (className) node.className = className;
+                if (text !== undefined) node.textContent = text;
+                return node;
             }
 
-            async function send() {
-                const text = userInput.value.trim();
-                if (!text) return;
+            function pretty(value) {
+                // Tool results arrive as JSON strings; pretty-print them when they parse.
+                if (typeof value === "string") {
+                    try {
+                        return JSON.stringify(JSON.parse(value), null, 2);
+                    } catch {
+                        return value;
+                    }
+                }
+                return JSON.stringify(value, null, 2);
+            }
 
+            function toolCard(call) {
+                let failed = false;
+                try {
+                    failed = "error" in JSON.parse(call.result);
+                } catch {}
+
+                const card = el("details", "call" + (failed ? " error" : ""));
+                const summary = el("summary");
+                summary.append(
+                    el("span", "call-name", call.name),
+                    el("span", "call-args", Object.values(call.args || {}).join(" · ")),
+                    el("span", "call-status", failed ? "error" : "ok"),
+                );
+                const body = el("div", "call-body");
+                body.append(el("h3", "", "Arguments"), el("pre", "", pretty(call.args)));
+                body.append(el("h3", "", "Result"), el("pre", "", pretty(call.result)));
+                card.append(summary, body);
+                return card;
+            }
+
+            // Gemini answers in light Markdown. Escape everything first, then allow
+            // only bold, italics, and bullet lists, so the reply still can't inject HTML.
+            function renderMarkdown(text) {
+                const escaped = text
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;");
+                const inline = (s) =>
+                    s.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\*(.+?)\*/g, "<em>$1</em>");
+
+                let html = "";
+                let inList = false;
+                for (const line of escaped.split("\n")) {
+                    const bullet = line.match(/^\s*[*-]\s+(.*)/);
+                    if (bullet && !inList) html += "<ul>";
+                    if (!bullet && inList) html += "</ul>";
+                    inList = !!bullet;
+                    html += bullet ? "<li>" + inline(bullet[1]) + "</li>" : inline(line) + "\n";
+                }
+                return html + (inList ? "</ul>" : "");
+            }
+
+            function scrollDown() {
+                messages.scrollTop = messages.scrollHeight;
+            }
+
+            async function send(text) {
+                text = text.trim();
+                if (!text || sendBtn.disabled) return;
+
+                document.getElementById("empty")?.remove();
                 userInput.value = "";
                 sendBtn.disabled = true;
-                addMessage("you", text);
-                const loading = addMessage("assistant", "Thinking...", true);
+
+                messages.append(el("div", "turn user", text));
+                const turn = el("div", "turn agent");
+                const answer = el("div", "answer thinking", "Scouting…");
+                turn.append(answer);
+                messages.append(turn);
+                scrollDown();
 
                 try {
                     const res = await fetch("/chat", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            message: text,
-                            session_id: sessionId,
-                        }),
+                        body: JSON.stringify({ message: text, session_id: sessionId }),
                     });
+                    if (!res.ok) throw new Error("Server returned " + res.status);
                     const data = await res.json();
                     sessionId = data.session_id;
 
-                    // Show each tool the harness ran, above the assistant's answer
+                    // Every tool the harness ran, in order, above the answer.
                     for (const call of data.tool_calls || []) {
-                        const div = document.createElement("div");
-                        div.className = "tool";
-                        const label = document.createElement("span");
-                        label.className = "label";
-                        label.textContent = "tool call  ";
-                        div.appendChild(label);
-                        div.appendChild(
-                            document.createTextNode(
-                                call.name + "(" + JSON.stringify(call.args) + ")\n→ " + call.result,
-                            ),
-                        );
-                        messages.insertBefore(div, loading);
+                        turn.insertBefore(toolCard(call), answer);
                     }
-                    loading.querySelector(".content").textContent =
-                        data.response;
-                    loading.classList.remove("loading");
+                    answer.innerHTML = renderMarkdown(data.response);
+                    answer.classList.remove("thinking");
+                    if (data.response.startsWith("Model call failed")) answer.classList.add("failed");
                 } catch (e) {
-                    loading.querySelector(".content").textContent =
-                        "Error: " + e.message;
-                    loading.classList.remove("loading");
+                    answer.textContent = "Couldn't reach Set Scout: " + e.message;
+                    answer.classList.remove("thinking");
+                    answer.classList.add("failed");
                 }
                 sendBtn.disabled = false;
-                userInput.focus();
+                userInput.focus({ preventScroll: true });
+                scrollDown();
             }
 
-            sendBtn.addEventListener("click", send);
-            userInput.addEventListener("keydown", function (e) {
-                if (e.key === "Enter") send();
+            document.getElementById("chat-form").addEventListener("submit", (e) => {
+                e.preventDefault();
+                send(userInput.value);
             });
-            userInput.focus();
+
+            for (const btn of document.querySelectorAll(".example")) {
+                btn.addEventListener("click", () => send(btn.textContent));
+            }
+
+            document.getElementById("new-chat").addEventListener("click", async () => {
+                if (sessionId) {
+                    await fetch("/clear?session_id=" + encodeURIComponent(sessionId), { method: "POST" });
+                }
+                sessionId = null;
+                messages.replaceChildren();
+                const empty = el("div", "empty");
+                empty.id = "empty";
+                empty.append(el("strong", "", "Where's the shoot?"), "Ask about filming anywhere in the five boroughs, or try one of the examples.");
+                messages.append(empty);
+                userInput.focus({ preventScroll: true });
+            });
+
+            userInput.focus({ preventScroll: true });
         </script>
     </body>
 </html>
