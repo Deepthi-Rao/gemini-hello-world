@@ -64,3 +64,5 @@ a single instance to keep each conversation together.
   streets rather than staying inside a park.
 - The OpenStreetMap services are shared and rate limited, so this is for demos,
   not heavy use.
+
+<!-- Deploy trigger test. -->
