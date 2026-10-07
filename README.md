@@ -12,12 +12,14 @@ Built on the `gemini-web-tool-calling` starter (FastAPI + LiteLLM + Gemini,
 
 ## Sample queries
 
-1. I ran a 10K in 50:00. Slept 5.5 hours, resting HR 58 (usually 52). Plan an easy
-   6 miles from Grand Army Plaza with water stops. I use GU gels.
+1. I'm starting from 515 W 110th St in Manhattan and want to run 7 miles past water
+   fountains. My HRV last night was 56 (usually around 62) and I slept 7 hours. My
+   last 10K was 52:30. Where should I run, where are the water fountains, and what
+   pace should I run to build fitness? I use GU gels.
 2. What's the best time to run in Central Park today, and how much will the weather
    slow me down?
-3. Half marathon PR is 1:52:00. Plan a 10 mile long run from Central Park with
-   Maurten Gel 100.
+3. I ran a 10K in 50:00. Slept 5.5 hours, resting HR 58 (usually 52). Plan an easy
+   6 miles from Grand Army Plaza with water stops. I use GU gels.
 
 Follow-ups use what you said earlier, e.g. after (1): "What would my tempo pace be
 if I felt great instead?"

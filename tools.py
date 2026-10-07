@@ -425,9 +425,9 @@ def plan_run_route(start: str, miles, water_stops: bool = True) -> str:
     ]
 
     # Paths wind, so a route runs longer than the straight lines. Start at 1.2x, then
-    # learn the real ratio from each route and retry, up to 4 routes.
+    # learn the real ratio from each route and retry, up to 6 routes.
     stretch, best, tried = 1.2, None, set()
-    for _ in range(4):
+    for _ in range(6):
         options = [
             (abs(stretch * straight(a, b) - target) + 0.15 * target * ((not a["water"]) + (not b["water"])), i)
             for i, (a, b) in enumerate(pairs) if i not in tried
@@ -440,7 +440,10 @@ def plan_run_route(start: str, miles, water_stops: bool = True) -> str:
         route = foot_route([home, a["point"], b["point"], home])
         if route is None:
             continue
-        stretch = route["meters"] / straight(a, b)
+        ratio = route["meters"] / straight(a, b)
+        if ratio > 2:  # a detour around water (e.g. over a bridge): skip it, and don't learn from it
+            continue
+        stretch = min(max(ratio, 1.05), 1.8)
         if best is None or abs(route["meters"] - target) < abs(best[0]["meters"] - target):
             best = (route, a, b)
         if abs(route["meters"] - target) < 0.05 * target:
@@ -461,7 +464,8 @@ def plan_run_route(start: str, miles, water_stops: bool = True) -> str:
 
     actual = route["meters"] / METERS_PER_MILE
     if miles - actual > 0.15:
-        notes += [f"The loop is {actual:.1f} mi. Add {(miles - actual) / 2:.2f} mi out and back at the end to reach {miles:g}."]
+        extra = (miles - actual) / 2
+        notes += [f"The loop is {actual:.1f} mi, short of {miles:g}. To make it up, run {extra:.2f} mi out from the start and back ({2 * extra:.1f} mi extra)."]
     elif actual - miles > 0.15:
         notes += [f"The loop is {actual:.1f} mi, a little over {miles:g}."]
 
