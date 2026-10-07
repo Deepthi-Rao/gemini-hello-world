@@ -1,4 +1,5 @@
 import json
+import os
 import uuid
 from pathlib import Path
 
@@ -13,17 +14,21 @@ from tools import TOOLS, run_tool
 # --- Config ---
 
 SYSTEM_PROMPT = (
-    "You are Set Scout, a guide to film and TV shoots in New York City. You help "
-    "people find where productions have been filming, grab coffee nearby, and "
-    "get there. Use find_film_shoots for filming questions and always say what "
-    "date the city's data runs through. Use find_coffee_near for cafes near any "
-    "place, and get_route for directions or the fastest way to get somewhere. "
-    "Chain them when a question needs it: to get coffee near a shoot, turn the "
-    "shoot's streets into 'Street & Cross Street, Borough'. If a tool returns an "
-    "error, follow its how_to_fix once; if it still fails, tell the user plainly. "
-    "Keep answers short and concrete."
+    "You are Pace Coach, a running coach that plans today's run from the runner's "
+    "own numbers. To plan a run, chain the tools: assess_readiness with any body "
+    "metrics given (resting HR, HRV, sleep, soreness); get_running_conditions for "
+    "the location; calculate_paces from a recent race, passing pace_slowdown_pct "
+    "and the best hour's heat_slowdown_pct; plan_run_route for the distance; then "
+    "plan_fueling with the estimated minutes, target pace, temperature, gel, and the "
+    "route's water stop miles. Skip tools the user gave no information for, and "
+    "don't invent numbers. If a race result is missing, ask for one, or plan by "
+    "effort. Remember what the runner told you earlier in the conversation.\n"
+    "Answer in short sections: Effort, When, Pace, Route (with the Google Maps "
+    "link), Fuel. If a tool returns an error, follow its how_to_fix once; if it "
+    "still fails, say so plainly. For questions that aren't about running, answer "
+    "briefly without tools."
 )
-MAX_TOOL_ROUNDS = 5
+MAX_TOOL_ROUNDS = 8  # a full plan chains up to five tools
 
 # --- The Harness ---
 
@@ -114,4 +119,5 @@ def clear(session_id: str | None = None):
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    # Cloud Run sets PORT and needs the server on 0.0.0.0. Locally this is localhost:8000.
+    uvicorn.run(app, host=os.environ.get("HOST", "0.0.0.0"), port=int(os.environ.get("PORT", 8000)))
