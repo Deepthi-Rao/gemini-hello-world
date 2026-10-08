@@ -1,16 +1,42 @@
 # Pace Coach
 
-A running coach that plans **today's** run from your own numbers. Tell it how your
-body feels and a recent race; it checks the weather, sets your paces, maps a loop
-past public drinking fountains, and tells you when to take each gel.
+**For:** recreational runners who track things like resting heart rate, HRV, and
+sleep, but still guess at pace on hot days and at fueling on long runs.
 
-**For:** recreational runners who track things like resting heart rate and sleep,
-but still guess at pace on hot days and at fueling on long runs.
+**What it does:** Pace Coach plans **today's** run from your own numbers. You tell
+it how your body feels and give it a recent race time. It checks the weather, sets
+your paces, maps a loop past public drinking fountains, and tells you when to take
+each gel.
 
 Built on the `gemini-web-tool-calling` starter (FastAPI + LiteLLM + Gemini,
 `vertex_ai/gemini-3.5-flash-lite`).
 
-## Sample queries
+## Tools
+
+- `assess_readiness`: compares today's resting HR, HRV, sleep, and soreness to your normal, then recommends push, as planned, easy, or rest.
+- `get_running_conditions`: gives the hourly forecast and air quality (Open-Meteo), the best hour to run, and how much the heat will slow you.
+- `calculate_paces`: works out easy, long, marathon, tempo, and interval paces from a recent race, slowed for readiness and heat.
+- `plan_run_route`: builds a loop of your distance past public drinking fountains (NYC Parks data or OpenStreetMap), with a map and a Google Maps link.
+- `plan_fueling`: says how much carbs, fluid, and sodium to take per hour, and at which minute and mile to take each gel, using the gel's real label (Open Food Facts).
+
+## How to use
+
+Open the app and type into the chat box. It's a chatbot, so plain sentences work.
+For a full plan, include:
+
+- where you're starting
+- how far you want to run
+- a recent race time
+- how you feel today: resting HR or HRV against your usual, sleep, and soreness
+- your gel, if you use one
+
+Or fill in the **Your numbers** panel on the left and press **Plan my run**, which
+writes that message for you. The three example buttons run the queries below. Each tool the agent calls appears as
+a card you can expand to see its arguments and result. Planned routes are drawn
+on a map. The agent remembers the conversation, so you can ask follow-ups.
+**New chat** starts over.
+
+### Example queries
 
 1. I'm starting from 515 W 110th St in Manhattan and want to run 7 miles past water
    fountains. My HRV last night was 56 (usually around 62) and I slept 7 hours. My
@@ -21,30 +47,20 @@ Built on the `gemini-web-tool-calling` starter (FastAPI + LiteLLM + Gemini,
 3. I ran a 10K in 50:00. Slept 5.5 hours, resting HR 58 (usually 52). Plan an easy
    6 miles from Grand Army Plaza with water stops. I use GU gels.
 
-Follow-ups use what you said earlier, e.g. after (1): "What would my tempo pace be
-if I felt great instead?"
+Follow-up after (1): "What would my tempo pace be if I felt great instead?"
 
-## Tools
+## How it works
 
-| Tool | What it does | Data |
-|---|---|---|
-| `assess_readiness` | Compares today's resting HR, HRV, sleep, and soreness to your normal; recommends push / as planned / easy / rest | Calculation |
-| `get_running_conditions` | Hourly temperature, dew point, wind, rain, UV, air quality, daylight; the best hour; heat slowdown % | Open-Meteo forecast and air quality |
-| `calculate_paces` | Easy, long, marathon, tempo, and interval paces from a recent race (Riegel's formula), slowed for readiness and heat; estimated run time | Calculation |
-| `plan_run_route` | A loop of your distance through public drinking fountains, with the mile of each stop and a Google Maps link | NYC Parks fountains (NYC Open Data) or OpenStreetMap, OSRM foot routing, Nominatim |
-| `plan_fueling` | Carbs, fluid, and sodium per hour; when (and at which mile) to take each gel, using the gel's real label | Open Food Facts |
+The model chains the tools. Readiness and weather set the slowdown. The paces set
+the run time. The route sets the water stops. All of it feeds the fueling plan.
+The calculator tools exist because models are unreliable at multi-step arithmetic.
 
-The model chains them: readiness and weather set the slowdown, paces set the run
-time, the route sets the water stops, and all of it feeds the fueling plan. The
-calculators exist because models are unreliable at multi-step arithmetic.
+Every tool returns JSON. A failed call returns `{"error", "how_to_fix"}`, so the
+model can retry with better arguments or explain the problem. `run_tool` catches
+every exception, so a bad call never crashes the loop.
 
-Every tool returns JSON. Failures return `{"error", "how_to_fix"}` so the model can
-retry with better arguments or explain the problem, and `run_tool` catches every
-exception so a bad call never crashes the loop.
-
-`/chat` returns `response`, `session_id`, and `tool_calls` (name, args, and result of
-every call). The page shows each call as an expandable card and draws planned
-routes on a map.
+`/chat` returns `response`, `session_id`, and `tool_calls` (the name, args, and
+result of every call).
 
 ## Setup
 
